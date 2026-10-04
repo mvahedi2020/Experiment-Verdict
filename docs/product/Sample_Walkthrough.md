@@ -1,0 +1,13 @@
+# Sample walkthrough
+
+1. Read the hypothesis and open **Evidence & rules**. Inspect EV-R1 and the full measurement contract. Close the drawer.
+2. Keep **EV-E1 · Balanced signal**. Primary completion: 3,000/5,000 vs 3,400/5,000 (+8 pp; approx interval +6.12 to +9.88). Complaints: 100/5,000 vs 110/5,000 (+0.20 pp; −0.36 to +0.76). Original rules permit review of a bounded proceed decision.
+3. Select **Proceed / bounded next step**, write a rationale of at least 20 characters, and select Primary and Guardrail references. **Review verdict** shows the exact snapshot. Cancel or Escape changes nothing. Confirm records EV-V1 locally.
+4. Change the fixture and export EV-V1. Its JSON still contains EV-E1, EV-C1, original EV-R1, active rule, rationale, references and limits. The new selection does not recalculate the old review.
+5. Choose **EV-E2 · Headline + harm**. Completion still improves, but complaints fail the original guardrail. Explore a complaint threshold of 5 pp with a reason. Confirm the post-result revision. EV-R2 may satisfy exploratory thresholds; proceed remains blocked by EV-R1. Review stop or iterate with Guardrail references.
+6. Compare EV-E3, EV-E4 and EV-E5. Small cells suppress complaint interval interpretation; assignment imbalance and incomplete exposure block proceed. No fixture establishes a real winner or causality.
+7. Withdraw EV-V1 with a reason of at least 20 characters. Preview and confirm. The original review remains exportable with its withdrawal status. A fresh review can revise the decision by adding another record.
+
+Recovery: reload restores compatible records. To reproduce a conflict, change this app's saved key in another same-origin tab after opening a preview. Confirmation rejects changed bytes. **Refresh saved evidence** previews compatible saved history; stale refresh also rejects. Corrupt records remain preserved and disable saving. **Review reset** discloses removal of all verdicts, withdrawals and post-result rules, with no undo; export preview-bound raw bytes first. Cancel leaves bytes unchanged. If the saved key or localStorage property cannot be read, reset and writes are blocked. If writes fail, the app explicitly marks changes as memory only and warns that reload loses them.
+
+The UI uses native dialog focus scope and Escape cancellation. Inspect the scorecard and dialogs at 320/390 px width and a short 1280×633 viewport. These are software scenarios, not completed human research.
