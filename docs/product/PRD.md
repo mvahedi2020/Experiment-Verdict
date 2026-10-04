@@ -12,6 +12,6 @@ Read the original contract → choose a fictional evidence version → inspect o
 | Review | Preview binds evidence, active rule, rationale, references, raw storage value and readability; stale preview cannot mutate |
 | Recovery | Compatible records restore; invalid bytes are preserved; failed reads never overwrite unseen storage; failed writes stay in memory with notice |
 | History | Append-only reviews and post-result revisions; withdrawal adds a record without deleting original; reset explicitly ends local history |
-| Accessibility | Native labels and controls, Escape cancels, trapped modal focus, returned trigger focus, responsive scorecard |
+| Accessibility | Native labels and controls, Escape cancels, forward/reverse Tab focus scope, returned trigger focus, responsive scorecard; inline modal validation |
 
 Success means a saved and exportable versioned review; cancellation makes no state change. A stale or incompatible browser state stops a write and explains how to refresh or inspect reset. Export is a JSON snapshot of the selected review, not a recalculation from current controls.
