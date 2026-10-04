@@ -26,11 +26,12 @@ export function assess(e:Evidence,r:Rule=original){
  const eligible=issues.length===0&&primary.lower!==null&&primary.lower>=r.primary&&guardrail.upper!==null&&guardrail.upper<=r.guardrail
  return {primary,guardrail,issues,eligible}
 }
+export const contract={id:'EV-C1',hypothesis:'A simpler onboarding checklist increases completion without unacceptable complaints.',population:'First-time workspace creators; one independent binary outcome per assigned person',window:'Fixed fictional 14-day window',primary:'Completed checklist / assigned people',guardrail:'People reporting complaints / assigned people',assignment:'Exact balanced assignment; curated quality signal, not a formal SRM test',exposure:'All assigned people must have exposure records',minimumArm:1000,minimumCell:10,method:'B minus A; approximate 95% unpooled Wald interval with z=1.96; independent-binomial assumption; no multiplicity or sequential adjustment'} as const
 export const limits=['Fictional fixed-window evidence; no real experiment or causal certification.','Approx 95% marginal unpooled normal intervals assume independent binomial outcomes.','No multiplicity or sequential adjustment; approximation may have poor coverage.','Exploratory mobile segment: 80/arm, completion 48/56, complaints 1/2. Descriptive only; no segment winner.']
 export const references=['primary','guardrail','quality','segment'] as const
 export type Ref=typeof references[number]
-export type Snapshot={evidence:Evidence;originalRule:Rule;activeRule:Rule;assessment:ReturnType<typeof assess>;limits:string[]}
-export function snapshot(e:Evidence,r:Rule):Snapshot{return structuredClone({evidence:e,originalRule:original,activeRule:r,assessment:assess(e),limits})}
+export type Snapshot={contract:typeof contract;evidence:Evidence;originalRule:Rule;activeRule:Rule;assessment:ReturnType<typeof assess>;limits:string[]}
+export function snapshot(e:Evidence,r:Rule):Snapshot{return structuredClone({contract,evidence:e,originalRule:original,activeRule:r,assessment:assess(e),limits})}
 export type Verdict='proceed'|'iterate'|'stop'
 export type Review={id:string;at:string;verdict:Verdict;rationale:string;refs:Ref[];snapshot:Snapshot}
 export type Withdrawal={reviewId:string;at:string;reason:string}
