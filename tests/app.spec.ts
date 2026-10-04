@@ -288,7 +288,7 @@ for (const width of [320, 390])
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({
-      path: `evidence/mobile-${width}.png`,
+      path: `test-results/screenshots/mobile-${width}.png`,
       fullPage: true,
     });
   });
@@ -332,7 +332,7 @@ test("production security policy, no unexpected network, safe text and document 
   }
   expect(external).toEqual([]);
   expect(errors).toEqual([]);
-  await page.screenshot({ path: "evidence/desktop.png", fullPage: true });
+  await page.screenshot({ path: "test-results/screenshots/desktop.png", fullPage: true });
 });
 
 test("cleared thresholds are rejected while explicit zero is valid", async ({
