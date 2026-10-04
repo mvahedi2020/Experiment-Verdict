@@ -258,6 +258,12 @@ test("keyboard dialog traps focus, Escape cancels and returns trigger", async ({
       await page.evaluate(() => !!document.activeElement?.closest("dialog")),
     ).toBe(true);
   }
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press("Shift+Tab");
+    expect(
+      await page.evaluate(() => !!document.activeElement?.closest("dialog")),
+    ).toBe(true);
+  }
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
 });
@@ -393,4 +399,25 @@ test("short withdrawal reason shows validation inside its modal", async ({
     JSON.parse((await page.evaluate((k) => localStorage.getItem(k), KEY))!)
       .withdrawals,
   ).toEqual([]);
+});
+
+test("incomplete rationale and missing references explain why review cannot be recorded", async ({
+  page,
+}) => {
+  await open(page);
+  await page
+    .getByRole("button", { name: "Review verdict", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("20–2,000");
+  expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBeNull();
+  await page
+    .getByLabel("Reviewer rationale")
+    .fill("A careful rationale still needs evidence references.");
+  await page
+    .getByRole("button", { name: "Review verdict", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "select evidence references",
+  );
+  expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBeNull();
 });

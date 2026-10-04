@@ -61,6 +61,7 @@ export default function App() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [revision, setRevision] = useState(false);
+  const [formError, setFormError] = useState("");
   const [dialogError, setDialogError] = useState("");
   const [inspection, setInspection] = useState<Review | null>(null);
   const [withdrawal, setWithdrawalState] = useState<string | null>(null);
@@ -122,6 +123,7 @@ export default function App() {
     );
   }
   function reviewVerdict() {
+    setFormError("");
     try {
       if (protectedState)
         throw Error("Refresh or explicitly reset saved evidence first.");
@@ -138,6 +140,7 @@ export default function App() {
       );
     } catch (err) {
       setNotice((err as Error).message);
+      setFormError((err as Error).message);
     }
   }
   function addRevision() {
@@ -433,6 +436,11 @@ export default function App() {
             >
               Review verdict
             </button>
+            {formError && (
+              <p className="warning" role="alert">
+                {formError}
+              </p>
+            )}
           </section>
           <aside className="limits" id="segment">
             <p className="eyebrow">KEEP THE LIMITS IN VIEW</p>
@@ -783,6 +791,9 @@ export default function App() {
           ) : (
             <>
               <p>
+                {preview.title === "Review reset"
+                  ? "After reset: "
+                  : "Resulting history: "}
                 {preview.next.reviews.length} verdicts ·{" "}
                 {preview.next.rules.length} rules ·{" "}
                 {preview.next.withdrawals.length} withdrawals
@@ -793,7 +804,10 @@ export default function App() {
           {preview.title === "Review reset" && (
             <>
               <p>
-                Saved bytes in this preview:{" "}
+                Current in-memory history to clear: {state.reviews.length}{" "}
+                verdicts, {state.rules.length - 1} post-result revisions,{" "}
+                {state.withdrawals.length} withdrawals. Saved bytes in this
+                preview:{" "}
                 {preview.bound.raw === null
                   ? "no saved record"
                   : `${preview.bound.raw.length} characters`}
