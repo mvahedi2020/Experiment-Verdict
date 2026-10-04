@@ -4,6 +4,8 @@ A fictional experiment scorecard for a product manager reviewing whether an inte
 
 ## Reviewer route
 
+[Open the interactive demo](https://mvahedi2020.github.io/Experiment-Verdict/).
+
 1. [Product brief](docs/product/Product_Brief.md): user, decision, alternative.
 2. [PRD](docs/product/PRD.md): requirements and acceptance.
 3. [Sample contract](docs/product/Sample_Contract.md): fictional records and statistical boundaries.

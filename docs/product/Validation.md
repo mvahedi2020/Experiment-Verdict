@@ -1,6 +1,8 @@
 # Validation
 
-Publication: pending centralized review and release by the portfolio owner. Local checks are recorded below after execution. Public source, deployment SHA, live files and public browser parity are not yet observed.
+Verified public release — October 4, 2026: source `3641392f85e15f00b02b2049571b15c7494b8725` passed the complete [verification and Pages workflow](https://github.com/mvahedi2020/Experiment-Verdict/actions/runs/37192251495), including dependency audit and production browser checks. Clean local/public main agreed; all 10 deployed files matched the local build, GitHub artifact and live bytes. Pages was enabled before the first push. The full 15 browser journeys also passed against the public URL. Independent review replayed a bounded proceed under the original contract and an exploratory relaxed guardrail that remained blocked under original rules. No browser errors were observed.
+
+The initial publication workflow was expanded during release review to require browser and dependency gates with pinned actions before deployment. Later documentation revisions keep the tested application behavior and receive their own release verification. Software evidence does not establish a real experiment, human comprehension or business value.
 
 Statistical method: [NIST difference-of-proportions formula and coverage cautions](https://itl.nist.gov/div898/software/dataplot/refman1/auxillar/diffprop.htm). Approximate 95% marginal unpooled normal interval, independent-binomial assumption, no multiplicity/sequential correction. An independently calculated Python oracle supplies fixed expected constants for meaningful unit checks. Curated quality signals are not a formal assignment-ratio test. Small-cell inference is suppressed.
 
