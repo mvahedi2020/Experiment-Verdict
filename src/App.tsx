@@ -1,67 +1,836 @@
-import {useState} from 'react'
-import Dialog from './Dialog'
-import EvidenceSnapshot,{ContractSummary,RuleSummary} from './EvidenceSnapshot'
-import {assess,fixtures,original,initial,createReview,references,type Ref,type Review,type State,type Rule,type Verdict} from './domain'
-import {read,commit,KEY,type Reading} from './storage'
-const pp=(n:number)=>`${n>0?'+':''}${n.toFixed(2)} pp`
-const bounds=(x:ReturnType<typeof assess>['primary'])=>x.lower===null?'Interval suppressed: small cells':`${pp(x.lower)} to ${pp(x.upper!)} · approx 95%`
-type Preview={title:string;explanation:string;next:State;bound:Reading;stateBytes:string;review?:Review}
-function exportJson(value:unknown,name:string){const a=document.createElement('a');const u=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
-export default function App(){
- const [boot]=useState(()=>read());const [reading,setReading]=useState(boot);const [state,setState]=useState(boot.state??initial())
- const [fixture,setFixture]=useState(0);const e=fixtures[fixture];const active=state.rules.at(-1)??original;const a=assess(e);const explored=assess(e,active)
- const [verdict,setVerdict]=useState<Verdict>('iterate');const [rationale,setRationale]=useState('');const [refs,setRefs]=useState<Ref[]>([])
- const [notice,setNotice]=useState(boot.state?'':'Saved evidence is unreadable or invalid. Existing bytes are preserved; review refresh or reset before saving.')
- const [preview,setPreview]=useState<Preview|null>(null);const [drawer,setDrawer]=useState(false);const [revision,setRevision]=useState(false)
- const [inspection,setInspection]=useState<Review|null>(null)
- const [withdrawal,setWithdrawalState]=useState<string|null>(null)
- const [min,setMin]=useState('2');const [max,setMax]=useState('1');const [reason,setReason]=useState('')
- const protectedState=!reading.readable||reading.state===null
- function prepare(title:string,explanation:string,next:State,review?:Review){
-  const current=read();if(!current.readable){setNotice('Storage cannot be read. No write is permitted; unseen saved bytes will not be overwritten.');return}
-  if(current.raw!==reading.raw){setNotice('Saved evidence changed in another tab. Refresh saved evidence before reviewing again.');return}
-  setPreview({title,explanation,next,bound:current,stateBytes:JSON.stringify(state),review})
- }
- function confirm(){
-  if(!preview)return
-  if(preview.stateBytes!==JSON.stringify(state)){setPreview(null);setNotice('Review became stale. Start a new preview.');return}
-  const result=commit(preview.bound,preview.next)
-  if(result.kind==='conflict'){setPreview(null);setNotice('Review became stale or storage cannot be read. Nothing was changed. Refresh saved evidence.');return}
-  setState(preview.next);setReading(result.reading);setPreview(null);setRevision(false)
-  setNotice(result.kind==='saved'?'Reviewed record saved locally.':'Write failed. This change is in memory only; reload loses it. Saved bytes were preserved.')
- }
- function reviewVerdict(){try{if(protectedState)throw Error('Refresh or explicitly reset saved evidence first.');const v=createReview(state,e,active,verdict,rationale,refs);if(state.reviews.length>=100)throw Error('Local history limit reached. Export history before reset.');prepare('Review verdict','Confirm the exact evidence version, original and active rule, rationale and selected references. This adds an immutable record.',{...state,reviews:[...state.reviews,v]},v)}catch(err){setNotice((err as Error).message)}}
- function addRevision(){
-  const primary=Number(min),guardrail=Number(max)
-  if(protectedState||min.trim()===''||max.trim()===''||!Number.isFinite(primary)||!Number.isFinite(guardrail)||primary<0||primary>20||guardrail<0||guardrail>20||reason.trim().length<20||reason.length>2000||state.rules.length>=100){setNotice('Use thresholds from 0 to 20 and a reason of 20–2,000 characters. Refresh protected evidence first. Maximum 100 rule versions.');return}
-  const rule:Rule={id:`EV-R${state.rules.length+1}`,kind:'post-result',primary,guardrail,reason:reason.trim()}
-  setRevision(false);prepare('Review post-result revision','This is an exploratory rule written after viewing results. Original proceed eligibility remains unchanged. Previous versions remain in history.',{...state,rules:[...state.rules,rule]})
- }
- function refresh(){const current=read();if(!current.state){setReading(current);setNotice('Saved record is invalid or unavailable. Existing bytes are preserved. Reset requires a readable matching preview.');return}setPreview({title:'Review saved refresh',explanation:'Replace in-memory history with the compatible saved history. Unsaved changes will be lost. No saved bytes are altered.',next:current.state,bound:current,stateBytes:JSON.stringify(state)})}
- function restoreRefresh(){if(!preview)return;const current=read();if(!current.readable||current.raw!==preview.bound.raw||JSON.stringify(state)!==preview.stateBytes){setPreview(null);setNotice('Refresh preview became stale. Nothing changed.');return}setState(preview.next);setReading(current);setPreview(null);setNotice('Compatible saved history restored.')}
- return <>
- <a className="skip" href="#scorecard">Skip to scorecard</a>
- <div className="topbar"><span className="mark">EV</span><strong>Experiment Verdict</strong><span className="fiction">Fictional decision lab</span><button onClick={()=>setDrawer(true)}>Evidence & rules</button></div>
- <main>
- <section className="intro"><div><p className="eyebrow">ONBOARDING CHECKLIST / EV-H1</p><h1>Evidence before<br/>a decision.</h1><p className="lede">A stronger completion signal is only part of the story. Review quality, guardrails and uncertainty together.</p></div><aside className="hypothesis"><span>THE HYPOTHESIS</span><p>A simpler checklist improves completion without an unacceptable increase in complaints.</p><small>First-time creators · fictional Sep 14–27, 2026</small></aside></section>
- <div className="toolbar"><label>Evidence fixture<select value={fixture} onChange={ev=>{setFixture(Number(ev.target.value));setRefs([]);setRationale('')}}>{fixtures.map((f,i)=><option key={f.id} value={i}>{f.id} · {f.name}</option>)}</select></label><div><span className="tag">Original EV-R1</span><span className="tag">Active {active.id} · {active.kind}</span></div></div>
- <section id="scorecard" className="scorecard" aria-labelledby="score-title"><div className="score-header"><div><p className="eyebrow">{e.id} / EVIDENCE SCORECARD</p><h2 id="score-title">{e.name}</h2><p>{e.note}</p></div><span className={`eligibility ${a.eligible?'eligible':'caution'}`}>{a.eligible?'Proceed eligible':'Proceed blocked'}<small>Under original rules · human review required</small></span></div>
- <p className="measure-note">B − A · pp means percentage points. Rates use assigned people; a complaint increase is worse. {a.issues.some(x=>x.startsWith('Assignment')||x.startsWith('Exposure'))?'Quality is invalid: displayed differences and intervals are descriptive only, not trustworthy inference.':'Intervals are approximate, marginal uncertainty estimates.'}</p><div className="metrics">{(['primary','guardrail'] as const).map((metric,i)=>{const field=i===0?'complete':'complaints';return <article key={metric} id={metric}><p className="eyebrow">{i===0?'01 / PRIMARY OUTCOME':'02 / GUARDRAIL'}</p><h3>{i===0?'Checklist completion':'Complaint rate'}</h3><div className="delta">{pp(a[metric].delta)}</div><p className="interval">{bounds(a[metric])}</p><p className={`metric-status ${((i===0?a.primary.lower!==null&&a.primary.lower>=original.primary:a.guardrail.upper!==null&&a.guardrail.upper<=original.guardrail))?'':'warning'}`}>{a[metric].lower===null?'Interval inference unavailable':(i===0?a.primary.lower!>=original.primary:a.guardrail.upper!<=original.guardrail)?'Original metric threshold satisfied':i===0?'Primary evidence does not clear the original threshold':'Complaint guardrail fails the original threshold'}</p><div className="arms"><p><span>Control A</span><strong>{e.a[field].toLocaleString()} / {e.a.assigned.toLocaleString()}</strong><small>{(e.a[field]/e.a.assigned*100).toFixed(1)}%</small></p><p><span>Variant B</span><strong>{e.b[field].toLocaleString()} / {e.b.assigned.toLocaleString()}</strong><small>{(e.b[field]/e.b.assigned*100).toFixed(1)}%</small></p></div><p className="rule-note">{i===0?'Lower bound must be ≥ +2.00 pp':'Upper bound must be ≤ +1.00 pp'} · original EV-R1</p></article>})}</div>
- <div id="quality" className="quality"><strong>03 / Quality gate</strong><p>{a.issues.length?a.issues.join(' · '):'Balanced assignment · complete exposure · sufficient cells'}</p><small>Assigned A/B: {e.a.assigned}/{e.b.assigned} · Exposed A/B: {e.a.exposed}/{e.b.exposed}. Curated signals, no formal assignment-ratio test.</small></div>
- </section>
- <div className="lower-grid"><section className="review-form"><p className="eyebrow">04 / HUMAN VERDICT</p><h2>Make the reasoning visible.</h2><p>A rule gate supports review; it does not certify a winner or cause a rollout.</p><label>Verdict<select value={verdict} onChange={ev=>setVerdict(ev.target.value as Verdict)}><option value="iterate">Iterate / another test</option><option value="stop">Stop / do not proceed</option><option value="proceed" disabled={!a.eligible}>Proceed / bounded next step</option></select></label>{!a.eligible&&<p className="warning">Proceed is blocked. Use iterate or stop with a reason tied to the evidence.</p>}<label>Reviewer rationale<textarea maxLength={2000} value={rationale} onChange={ev=>setRationale(ev.target.value)} placeholder="Explain the bounded decision, uncertainty and next step…"/></label><fieldset><legend>Select evidence references</legend>{references.map(r=><label key={r}><input type="checkbox" checked={refs.includes(r)} onChange={ev=>setRefs(ev.target.checked?[...refs,r]:refs.filter(x=>x!==r))}/>{r==='segment'?'Segment limits':r[0].toUpperCase()+r.slice(1)}</label>)}</fieldset><button className="primary" onClick={reviewVerdict} disabled={protectedState}>Review verdict</button></section>
- <aside className="limits" id="segment"><p className="eyebrow">KEEP THE LIMITS IN VIEW</p><h2>Signal is not certainty.</h2><p>Approx 95% marginal intervals assume independent binomial outcomes. No multiple-test or sequential adjustment; the normal approximation can have poor coverage.</p><p>Exploratory mobile segment: 80 people per arm; completion 48 / 56 and complaints 1 / 2. Small cells, descriptive only. No segment winner.</p><p>Fictional fixed-window results do not establish causality or external validity.</p>{active.kind==='post-result'&&<p className="warning">Exploratory {active.id}: {explored.eligible?'thresholds satisfied':'thresholds not satisfied'}. Original gate remains {a.eligible?'eligible':'blocked'}.</p>}<button onClick={()=>{setMin(String(active.primary));setMax(String(active.guardrail));setReason('');setRevision(true)}} disabled={protectedState}>Explore a rule revision</button></aside></div>
- <section className="history"><p className="eyebrow">REVIEW HISTORY / {state.reviews.length} RECORDS</p><h2>Every verdict keeps its evidence.</h2>{!state.reviews.length?<p>No reviewed verdict yet. Select your evidence references and inspect the preview before saving.</p>:state.reviews.map(v=>{const withdrawn=state.withdrawals.find(w=>w.reviewId===v.id);return <article key={v.id}><div><strong>{v.id} · {v.verdict.toUpperCase()} {withdrawn?'· WITHDRAWN':''}</strong><p>{v.snapshot.evidence.id} · original {v.snapshot.originalRule.id} · active {v.snapshot.activeRule.id} · {v.at}</p><p>{v.rationale}</p><div className="ref-links">References: {v.refs.map(r=><button key={r} onClick={()=>setInspection(v)}>{v.snapshot.evidence.id}#{r}</button>)}</div>{withdrawn&&<p>Withdrawal: {withdrawn.reason}</p>}</div><div className="history-actions"><button onClick={()=>exportJson({...v,withdrawal:withdrawn??null},`${v.id}-${v.snapshot.evidence.id}.json`)}>Export {v.id}</button><button disabled={!!withdrawn||protectedState} onClick={()=>{setReason('');setDrawer(false);setPreview(null);setWithdrawal(v.id)}}>Withdraw {v.id}</button></div></article>})}</section>
- <section className="recovery"><h2>Local evidence care</h2><p>Refresh restores compatible saved records. Reset ends this local history and removes all verdicts, withdrawals and rule revisions. Export history before resetting. No undo after reset; exported files remain.</p><button onClick={refresh}>Refresh saved evidence</button><button onClick={()=>exportJson(state,'Experiment-Verdict-history.json')}>Export in-memory history</button><button onClick={()=>{const current=read();if(!current.readable){setNotice('Storage cannot be read. Reset is blocked to preserve unseen bytes.');return}setPreview({title:'Review reset',explanation:'Reset replaces the current saved record and in-memory history with the original contract. All verdicts, withdrawals and post-result rules will be removed. This ends the history boundary; no undo. Invalid saved bytes will also be replaced. Export raw saved bytes first if needed.',next:initial(),bound:current,stateBytes:JSON.stringify(state)})}}>Review reset</button><button disabled={!reading.readable||reading.raw===null} onClick={()=>exportJson({key:KEY,raw:reading.raw},'Experiment-Verdict-raw-saved.json')}>Export last read saved bytes</button></section>
- <p className="status" role="status">{notice||'Local evidence only. Your review stays in this browser; nothing is sent.'}</p>
- <footer><span>Mo: Product / Program Management direction · Codex: AI implementation and checks</span><nav>{['Product_Brief','PRD','Sample_Contract','Case_Study','Decisions_and_Risks','Validation','Sample_Walkthrough'].map(d=><a key={d} href={`${import.meta.env.BASE_URL}docs/product/${d}.md`}>{d.replaceAll('_',' ')}</a>)}</nav></footer>
- </main>
- {inspection&&<Dialog title={`${inspection.id} exact evidence`} onClose={()=>setInspection(null)}><p>Immutable {inspection.snapshot.evidence.id} snapshot reviewed with original {inspection.snapshot.originalRule.id} and active {inspection.snapshot.activeRule.id}. Current fixture selection does not alter this evidence.</p><p>Selected references: {inspection.refs.map(r=>`${inspection.snapshot.evidence.id}#${r}`).join(', ')}</p><p>{inspection.rationale}</p><EvidenceSnapshot value={inspection.snapshot}/><button onClick={()=>setInspection(null)}>Close snapshot</button></Dialog>}
- {drawer&&<Dialog title="Evidence and rule ledger" onClose={()=>setDrawer(false)}><p>Original EV-R1 remains the proceed gate. Post-result versions are exploratory and retained independently.</p>{state.rules.map(r=><RuleSummary key={r.id} rule={r}/>)}<ContractSummary/><p>Original eligibility: first-time creators, ≥1,000 per arm, exact balance, complete exposure, at least 10 successes/failures per metric/arm.</p><button onClick={()=>setDrawer(false)}>Close evidence</button></Dialog>}
- {revision&&<Dialog title="Explore post-result rule" onClose={()=>setRevision(false)}><p>This new version is explicitly post-result. It never replaces the original proceed gate.</p><label>Primary lower bound (pp)<input type="number" min="0" max="20" step="0.1" value={min} onChange={ev=>setMin(ev.target.value)}/></label><label>Complaint upper bound (pp)<input type="number" min="0" max="20" step="0.1" value={max} onChange={ev=>setMax(ev.target.value)}/></label><label>Revision reason<textarea value={reason} maxLength={2000} onChange={ev=>setReason(ev.target.value)}/></label><button onClick={addRevision}>Review revision</button><button onClick={()=>setRevision(false)}>Cancel</button></Dialog>}
- {withdrawal&&<Dialog title="Withdraw a verdict" onClose={()=>setWithdrawal(null)}><p>Withdrawal adds a reason to history. The original verdict and its exact evidence remain available for export.</p><label>Withdrawal reason<textarea value={reason} maxLength={2000} onChange={ev=>setReason(ev.target.value)}/></label><button onClick={()=>{if(reason.trim().length<20){setNotice('Explain the withdrawal in at least 20 characters.');return}const id=withdrawal;setWithdrawal(null);prepare('Review withdrawal','The original record remains in history. This adds an immutable withdrawal with your reason.',{...state,withdrawals:[...state.withdrawals,{reviewId:id,at:new Date().toISOString(),reason:reason.trim()}]})}}>Review withdrawal</button><button onClick={()=>setWithdrawal(null)}>Cancel</button></Dialog>}
- {preview&&<Dialog title={preview.title} onClose={()=>setPreview(null)}><p>{preview.explanation}</p>{preview.review?<><p><strong>{preview.review.id} · {preview.review.verdict}</strong></p><p>{preview.review.rationale}</p><p>References: {preview.review.refs.join(', ')}</p><EvidenceSnapshot value={preview.review.snapshot}/></>:<><p>{preview.next.reviews.length} verdicts · {preview.next.rules.length} rules · {preview.next.withdrawals.length} withdrawals</p><RuleSummary rule={preview.next.rules.at(-1)!}/></>}{preview.title==='Review reset'&&<><p>Saved bytes in this preview: {preview.bound.raw===null?'no saved record':`${preview.bound.raw.length} characters`}. Readable: yes.</p><button disabled={preview.bound.raw===null} onClick={()=>exportJson({key:KEY,raw:preview.bound.raw},'Experiment-Verdict-reset-bound-raw.json')}>Export preview-bound saved bytes</button></>}<div className="dialog-actions"><button className="primary" onClick={preview.title==='Review saved refresh'?restoreRefresh:confirm}>Confirm {preview.title.replace('Review ','').toLowerCase()}</button><button onClick={()=>setPreview(null)}>Cancel</button></div></Dialog>}
- </>
- // Withdrawal selection is kept outside immutable history until its own preview is confirmed.
- function setWithdrawal(id:string|null){setWithdrawalState(id)}
+import { useState } from "react";
+import Dialog from "./Dialog";
+import EvidenceSnapshot, {
+  ContractSummary,
+  RuleSummary,
+} from "./EvidenceSnapshot";
+import {
+  assess,
+  fixtures,
+  original,
+  initial,
+  createReview,
+  references,
+  type Ref,
+  type Review,
+  type State,
+  type Rule,
+  type Verdict,
+} from "./domain";
+import { read, commit, KEY, type Reading } from "./storage";
+const pp = (n: number) => `${n > 0 ? "+" : ""}${n.toFixed(2)} pp`;
+const bounds = (x: ReturnType<typeof assess>["primary"]) =>
+  x.lower === null
+    ? "Interval suppressed: small cells"
+    : `${pp(x.lower)} to ${pp(x.upper!)} · approx 95%`;
+type Preview = {
+  title: string;
+  explanation: string;
+  next: State;
+  bound: Reading;
+  stateBytes: string;
+  review?: Review;
+};
+function exportJson(value: unknown, name: string) {
+  const a = document.createElement("a");
+  const u = URL.createObjectURL(
+    new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }),
+  );
+  a.href = u;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(u), 1000);
+}
+export default function App() {
+  const [boot] = useState(() => read());
+  const [reading, setReading] = useState(boot);
+  const [state, setState] = useState(boot.state ?? initial());
+  const [fixture, setFixture] = useState(0);
+  const e = fixtures[fixture];
+  const active = state.rules.at(-1) ?? original;
+  const a = assess(e);
+  const explored = assess(e, active);
+  const [verdict, setVerdict] = useState<Verdict>("iterate");
+  const [rationale, setRationale] = useState("");
+  const [refs, setRefs] = useState<Ref[]>([]);
+  const [notice, setNotice] = useState(
+    boot.state
+      ? ""
+      : "Saved evidence is unreadable or invalid. Existing bytes are preserved; review refresh or reset before saving.",
+  );
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [drawer, setDrawer] = useState(false);
+  const [revision, setRevision] = useState(false);
+  const [dialogError, setDialogError] = useState("");
+  const [inspection, setInspection] = useState<Review | null>(null);
+  const [withdrawal, setWithdrawalState] = useState<string | null>(null);
+  const [min, setMin] = useState("2");
+  const [max, setMax] = useState("1");
+  const [reason, setReason] = useState("");
+  const protectedState = !reading.readable || reading.state === null;
+  function prepare(
+    title: string,
+    explanation: string,
+    next: State,
+    review?: Review,
+  ) {
+    const current = read();
+    if (!current.readable) {
+      setNotice(
+        "Storage cannot be read. No write is permitted; unseen saved bytes will not be overwritten.",
+      );
+      return;
+    }
+    if (current.raw !== reading.raw) {
+      setNotice(
+        "Saved evidence changed in another tab. Refresh saved evidence before reviewing again.",
+      );
+      return;
+    }
+    setPreview({
+      title,
+      explanation,
+      next,
+      bound: current,
+      stateBytes: JSON.stringify(state),
+      review,
+    });
+  }
+  function confirm() {
+    if (!preview) return;
+    if (preview.stateBytes !== JSON.stringify(state)) {
+      setPreview(null);
+      setNotice("Review became stale. Start a new preview.");
+      return;
+    }
+    const result = commit(preview.bound, preview.next);
+    if (result.kind === "conflict") {
+      setPreview(null);
+      setNotice(
+        "Review became stale or storage cannot be read. Nothing was changed. Refresh saved evidence.",
+      );
+      return;
+    }
+    setState(preview.next);
+    setReading(result.reading);
+    setPreview(null);
+    setRevision(false);
+    setNotice(
+      result.kind === "saved"
+        ? "Reviewed record saved locally."
+        : "Write failed. This change is in memory only; reload loses it. Saved bytes were preserved.",
+    );
+  }
+  function reviewVerdict() {
+    try {
+      if (protectedState)
+        throw Error("Refresh or explicitly reset saved evidence first.");
+      const v = createReview(state, e, active, verdict, rationale, refs);
+      if (state.reviews.length >= 100)
+        throw Error(
+          "Local history limit reached. Export history before reset.",
+        );
+      prepare(
+        "Review verdict",
+        "Confirm the exact evidence version, original and active rule, rationale and selected references. This adds an immutable record.",
+        { ...state, reviews: [...state.reviews, v] },
+        v,
+      );
+    } catch (err) {
+      setNotice((err as Error).message);
+    }
+  }
+  function addRevision() {
+    const primary = Number(min),
+      guardrail = Number(max);
+    if (
+      protectedState ||
+      min.trim() === "" ||
+      max.trim() === "" ||
+      !Number.isFinite(primary) ||
+      !Number.isFinite(guardrail) ||
+      primary < 0 ||
+      primary > 20 ||
+      guardrail < 0 ||
+      guardrail > 20 ||
+      reason.trim().length < 20 ||
+      reason.length > 2000 ||
+      state.rules.length >= 100
+    ) {
+      setDialogError(
+        "Enter both thresholds from 0 to 20 and a reason of 20–2,000 characters. Maximum 100 rule versions.",
+      );
+      return;
+    }
+    const rule: Rule = {
+      id: `EV-R${state.rules.length + 1}`,
+      kind: "post-result",
+      primary,
+      guardrail,
+      reason: reason.trim(),
+    };
+    setRevision(false);
+    prepare(
+      "Review post-result revision",
+      "This is an exploratory rule written after viewing results. Original proceed eligibility remains unchanged. Previous versions remain in history.",
+      { ...state, rules: [...state.rules, rule] },
+    );
+  }
+  function refresh() {
+    const current = read();
+    if (!current.state) {
+      setReading(current);
+      setNotice(
+        "Saved record is invalid or unavailable. Existing bytes are preserved. Reset requires a readable matching preview.",
+      );
+      return;
+    }
+    setPreview({
+      title: "Review saved refresh",
+      explanation:
+        "Replace in-memory history with the compatible saved history. Unsaved changes will be lost. No saved bytes are altered.",
+      next: current.state,
+      bound: current,
+      stateBytes: JSON.stringify(state),
+    });
+  }
+  function restoreRefresh() {
+    if (!preview) return;
+    const current = read();
+    if (
+      !current.readable ||
+      current.raw !== preview.bound.raw ||
+      JSON.stringify(state) !== preview.stateBytes
+    ) {
+      setPreview(null);
+      setNotice("Refresh preview became stale. Nothing changed.");
+      return;
+    }
+    setState(preview.next);
+    setReading(current);
+    setPreview(null);
+    setNotice("Compatible saved history restored.");
+  }
+  return (
+    <>
+      <a className="skip" href="#scorecard">
+        Skip to scorecard
+      </a>
+      <div className="topbar">
+        <span className="mark">EV</span>
+        <strong>Experiment Verdict</strong>
+        <span className="fiction">Fictional decision lab</span>
+        <button onClick={() => setDrawer(true)}>Evidence & rules</button>
+      </div>
+      <main>
+        <section className="intro">
+          <div>
+            <p className="eyebrow">ONBOARDING CHECKLIST / EV-H1</p>
+            <h1>
+              Evidence before
+              <br />a decision.
+            </h1>
+            <p className="lede">
+              A stronger completion signal is only part of the story. Review
+              quality, guardrails and uncertainty together.
+            </p>
+          </div>
+          <aside className="hypothesis">
+            <span>THE HYPOTHESIS</span>
+            <p>
+              A simpler checklist improves completion without an unacceptable
+              increase in complaints.
+            </p>
+            <small>First-time creators · fictional Sep 14–27, 2026</small>
+          </aside>
+        </section>
+        <div className="toolbar">
+          <label>
+            Evidence fixture
+            <select
+              value={fixture}
+              onChange={(ev) => {
+                setFixture(Number(ev.target.value));
+                setVerdict("iterate");
+                setRefs([]);
+                setRationale("");
+              }}
+            >
+              {fixtures.map((f, i) => (
+                <option key={f.id} value={i}>
+                  {f.id} · {f.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div>
+            <span className="tag">Original EV-R1</span>
+            <span className="tag">
+              Active {active.id} · {active.kind}
+            </span>
+          </div>
+        </div>
+        <section
+          id="scorecard"
+          className="scorecard"
+          aria-labelledby="score-title"
+        >
+          <div className="score-header">
+            <div>
+              <p className="eyebrow">{e.id} / EVIDENCE SCORECARD</p>
+              <h2 id="score-title">{e.name}</h2>
+              <p>{e.note}</p>
+            </div>
+            <span
+              className={`eligibility ${a.eligible ? "eligible" : "caution"}`}
+            >
+              {a.eligible ? "Proceed eligible" : "Proceed blocked"}
+              <small>Under original rules · human review required</small>
+            </span>
+          </div>
+          <p className="measure-note">
+            B − A · pp means percentage points. Rates use assigned people; a
+            complaint increase is worse.{" "}
+            {a.issues.some(
+              (x) => x.startsWith("Assignment") || x.startsWith("Exposure"),
+            )
+              ? "Quality is invalid: displayed differences and intervals are descriptive only, not trustworthy inference."
+              : "Intervals are approximate, marginal uncertainty estimates."}
+          </p>
+          <div className="metrics">
+            {(["primary", "guardrail"] as const).map((metric, i) => {
+              const field = i === 0 ? "complete" : "complaints";
+              return (
+                <article key={metric} id={metric}>
+                  <p className="eyebrow">
+                    {i === 0 ? "01 / PRIMARY OUTCOME" : "02 / GUARDRAIL"}
+                  </p>
+                  <h3>{i === 0 ? "Checklist completion" : "Complaint rate"}</h3>
+                  <div className="delta">{pp(a[metric].delta)}</div>
+                  <p className="interval">{bounds(a[metric])}</p>
+                  <p
+                    className={`metric-status ${(i === 0 ? a.primary.lower !== null && a.primary.lower >= original.primary : a.guardrail.upper !== null && a.guardrail.upper <= original.guardrail) ? "" : "warning"}`}
+                  >
+                    {a[metric].lower === null
+                      ? "Interval inference unavailable"
+                      : (
+                            i === 0
+                              ? a.primary.lower! >= original.primary
+                              : a.guardrail.upper! <= original.guardrail
+                          )
+                        ? "Original metric threshold satisfied"
+                        : i === 0
+                          ? "Primary evidence does not clear the original threshold"
+                          : "Complaint guardrail fails the original threshold"}
+                  </p>
+                  <div className="arms">
+                    <p>
+                      <span>Control A</span>
+                      <strong>
+                        {e.a[field].toLocaleString()} /{" "}
+                        {e.a.assigned.toLocaleString()}
+                      </strong>
+                      <small>
+                        {((e.a[field] / e.a.assigned) * 100).toFixed(1)}%
+                      </small>
+                    </p>
+                    <p>
+                      <span>Variant B</span>
+                      <strong>
+                        {e.b[field].toLocaleString()} /{" "}
+                        {e.b.assigned.toLocaleString()}
+                      </strong>
+                      <small>
+                        {((e.b[field] / e.b.assigned) * 100).toFixed(1)}%
+                      </small>
+                    </p>
+                  </div>
+                  <p className="rule-note">
+                    {i === 0
+                      ? "Lower bound must be ≥ +2.00 pp"
+                      : "Upper bound must be ≤ +1.00 pp"}{" "}
+                    · original EV-R1
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+          <div id="quality" className="quality">
+            <strong>03 / Quality gate</strong>
+            <p>
+              {a.issues.length
+                ? a.issues.join(" · ")
+                : "Balanced assignment · complete exposure · sufficient cells"}
+            </p>
+            <small>
+              Assigned A/B: {e.a.assigned}/{e.b.assigned} · Exposed A/B:{" "}
+              {e.a.exposed}/{e.b.exposed}. Curated signals, no formal
+              assignment-ratio test.
+            </small>
+          </div>
+        </section>
+        <div className="lower-grid">
+          <section className="review-form">
+            <p className="eyebrow">04 / HUMAN VERDICT</p>
+            <h2>Make the reasoning visible.</h2>
+            <p>
+              A rule gate supports review; it does not certify a winner or cause
+              a rollout.
+            </p>
+            <label>
+              Verdict
+              <select
+                value={verdict}
+                onChange={(ev) => setVerdict(ev.target.value as Verdict)}
+              >
+                <option value="iterate">Iterate / another test</option>
+                <option value="stop">Stop / do not proceed</option>
+                <option value="proceed" disabled={!a.eligible}>
+                  Proceed / bounded next step
+                </option>
+              </select>
+            </label>
+            {!a.eligible && (
+              <p className="warning">
+                Proceed is blocked. Use iterate or stop with a reason tied to
+                the evidence.
+              </p>
+            )}
+            <label>
+              Reviewer rationale
+              <textarea
+                maxLength={2000}
+                value={rationale}
+                onChange={(ev) => setRationale(ev.target.value)}
+                placeholder="Explain the bounded decision, uncertainty and next step…"
+              />
+            </label>
+            <fieldset>
+              <legend>Select evidence references</legend>
+              {references.map((r) => (
+                <label key={r}>
+                  <input
+                    type="checkbox"
+                    checked={refs.includes(r)}
+                    onChange={(ev) =>
+                      setRefs(
+                        ev.target.checked
+                          ? [...refs, r]
+                          : refs.filter((x) => x !== r),
+                      )
+                    }
+                  />
+                  {r === "segment"
+                    ? "Segment limits"
+                    : r[0].toUpperCase() + r.slice(1)}
+                </label>
+              ))}
+            </fieldset>
+            <button
+              className="primary"
+              onClick={reviewVerdict}
+              disabled={protectedState}
+            >
+              Review verdict
+            </button>
+          </section>
+          <aside className="limits" id="segment">
+            <p className="eyebrow">KEEP THE LIMITS IN VIEW</p>
+            <h2>Signal is not certainty.</h2>
+            <p>
+              Approx 95% marginal intervals assume independent binomial
+              outcomes. No multiple-test or sequential adjustment; the normal
+              approximation can have poor coverage.
+            </p>
+            <p>
+              Exploratory mobile segment: 80 people per arm; completion 48 / 56
+              and complaints 1 / 2. Small cells, descriptive only. No segment
+              winner.
+            </p>
+            <p>
+              Fictional fixed-window results do not establish causality or
+              external validity.
+            </p>
+            {active.kind === "post-result" && (
+              <p className="warning">
+                Exploratory {active.id}:{" "}
+                {explored.eligible
+                  ? "thresholds satisfied"
+                  : "thresholds not satisfied"}
+                . Original gate remains {a.eligible ? "eligible" : "blocked"}.
+              </p>
+            )}
+            <button
+              onClick={() => {
+                setMin(String(active.primary));
+                setMax(String(active.guardrail));
+                setReason("");
+                setDialogError("");
+                setRevision(true);
+              }}
+              disabled={protectedState}
+            >
+              Explore a rule revision
+            </button>
+          </aside>
+        </div>
+        <section className="history">
+          <p className="eyebrow">
+            REVIEW HISTORY / {state.reviews.length} RECORDS
+          </p>
+          <h2>Every verdict keeps its evidence.</h2>
+          {!state.reviews.length ? (
+            <p>
+              No reviewed verdict yet. Select your evidence references and
+              inspect the preview before saving.
+            </p>
+          ) : (
+            state.reviews.map((v) => {
+              const withdrawn = state.withdrawals.find(
+                (w) => w.reviewId === v.id,
+              );
+              return (
+                <article key={v.id}>
+                  <div>
+                    <strong>
+                      {v.id} · {v.verdict.toUpperCase()}{" "}
+                      {withdrawn ? "· WITHDRAWN" : ""}
+                    </strong>
+                    <p>
+                      {v.snapshot.evidence.id} · original{" "}
+                      {v.snapshot.originalRule.id} · active{" "}
+                      {v.snapshot.activeRule.id} · {v.at}
+                    </p>
+                    <p>{v.rationale}</p>
+                    <div className="ref-links">
+                      References:{" "}
+                      {v.refs.map((r) => (
+                        <button key={r} onClick={() => setInspection(v)}>
+                          {v.snapshot.evidence.id}#{r}
+                        </button>
+                      ))}
+                    </div>
+                    {withdrawn && <p>Withdrawal: {withdrawn.reason}</p>}
+                  </div>
+                  <div className="history-actions">
+                    <button
+                      onClick={() =>
+                        exportJson(
+                          { ...v, withdrawal: withdrawn ?? null },
+                          `${v.id}-${v.snapshot.evidence.id}.json`,
+                        )
+                      }
+                    >
+                      Export {v.id}
+                    </button>
+                    <button
+                      disabled={!!withdrawn || protectedState}
+                      onClick={() => {
+                        setReason("");
+                        setDialogError("");
+                        setDrawer(false);
+                        setPreview(null);
+                        setWithdrawal(v.id);
+                      }}
+                    >
+                      Withdraw {v.id}
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </section>
+        <section className="recovery">
+          <h2>Local evidence care</h2>
+          <p>
+            Refresh restores compatible saved records. Reset ends this local
+            history and removes all verdicts, withdrawals and rule revisions.
+            Export history before resetting. No undo after reset; exported files
+            remain.
+          </p>
+          <button onClick={refresh}>Refresh saved evidence</button>
+          <button
+            onClick={() => exportJson(state, "Experiment-Verdict-history.json")}
+          >
+            Export in-memory history
+          </button>
+          <button
+            onClick={() => {
+              const current = read();
+              if (!current.readable) {
+                setNotice(
+                  "Storage cannot be read. Reset is blocked to preserve unseen bytes.",
+                );
+                return;
+              }
+              setPreview({
+                title: "Review reset",
+                explanation:
+                  "Reset replaces the current saved record and in-memory history with the original contract. All verdicts, withdrawals and post-result rules will be removed. This ends the history boundary; no undo. Invalid saved bytes will also be replaced. Export raw saved bytes first if needed.",
+                next: initial(),
+                bound: current,
+                stateBytes: JSON.stringify(state),
+              });
+            }}
+          >
+            Review reset
+          </button>
+          <button
+            disabled={!reading.readable || reading.raw === null}
+            onClick={() =>
+              exportJson(
+                { key: KEY, raw: reading.raw },
+                "Experiment-Verdict-raw-saved.json",
+              )
+            }
+          >
+            Export last read saved bytes
+          </button>
+        </section>
+        <p className="status" role="status">
+          {notice ||
+            "Local evidence only. Your review stays in this browser; nothing is sent."}
+        </p>
+        <footer>
+          <span>
+            Mo: Product / Program Management direction · Codex: AI
+            implementation and checks
+          </span>
+          <nav>
+            {[
+              "Product_Brief",
+              "PRD",
+              "Sample_Contract",
+              "Case_Study",
+              "Decisions_and_Risks",
+              "Validation",
+              "Sample_Walkthrough",
+            ].map((d) => (
+              <a
+                key={d}
+                href={`${import.meta.env.BASE_URL}docs/product/${d}.md`}
+              >
+                {d.replaceAll("_", " ")}
+              </a>
+            ))}
+          </nav>
+        </footer>
+      </main>
+      {inspection && (
+        <Dialog
+          title={`${inspection.id} exact evidence`}
+          onClose={() => setInspection(null)}
+        >
+          <p>
+            Immutable {inspection.snapshot.evidence.id} snapshot reviewed with
+            original {inspection.snapshot.originalRule.id} and active{" "}
+            {inspection.snapshot.activeRule.id}. Current fixture selection does
+            not alter this evidence.
+          </p>
+          <p>
+            Selected references:{" "}
+            {inspection.refs
+              .map((r) => `${inspection.snapshot.evidence.id}#${r}`)
+              .join(", ")}
+          </p>
+          <p>{inspection.rationale}</p>
+          <EvidenceSnapshot value={inspection.snapshot} />
+          <button onClick={() => setInspection(null)}>Close snapshot</button>
+        </Dialog>
+      )}
+      {drawer && (
+        <Dialog
+          title="Evidence and rule ledger"
+          onClose={() => setDrawer(false)}
+        >
+          <p>
+            Original EV-R1 remains the proceed gate. Post-result versions are
+            exploratory and retained independently.
+          </p>
+          {state.rules.map((r) => (
+            <RuleSummary key={r.id} rule={r} />
+          ))}
+          <ContractSummary />
+          <p>
+            Original eligibility: first-time creators, ≥1,000 per arm, exact
+            balance, complete exposure, at least 10 successes/failures per
+            metric/arm.
+          </p>
+          <button onClick={() => setDrawer(false)}>Close evidence</button>
+        </Dialog>
+      )}
+      {revision && (
+        <Dialog
+          title="Explore post-result rule"
+          onClose={() => setRevision(false)}
+        >
+          <p>
+            This new version is explicitly post-result. It never replaces the
+            original proceed gate.
+          </p>
+          <label>
+            Primary lower bound (pp)
+            <input
+              type="number"
+              min="0"
+              max="20"
+              step="0.1"
+              value={min}
+              onChange={(ev) => setMin(ev.target.value)}
+            />
+          </label>
+          <label>
+            Complaint upper bound (pp)
+            <input
+              type="number"
+              min="0"
+              max="20"
+              step="0.1"
+              value={max}
+              onChange={(ev) => setMax(ev.target.value)}
+            />
+          </label>
+          <p className="field-guidance">
+            Enter both numeric thresholds explicitly. Add a reason of 20–2,000
+            characters.
+          </p>
+          {dialogError && (
+            <p className="warning" role="alert">
+              {dialogError}
+            </p>
+          )}
+          <label>
+            Revision reason
+            <textarea
+              value={reason}
+              maxLength={2000}
+              onChange={(ev) => setReason(ev.target.value)}
+            />
+          </label>
+          <button onClick={addRevision}>Review revision</button>
+          <button onClick={() => setRevision(false)}>Cancel</button>
+        </Dialog>
+      )}
+      {withdrawal && (
+        <Dialog title="Withdraw a verdict" onClose={() => setWithdrawal(null)}>
+          <p>
+            Withdrawal adds a reason to history. The original verdict and its
+            exact evidence remain available for export.
+          </p>
+          <p className="field-guidance">
+            Add a withdrawal reason of 20–2,000 characters.
+          </p>
+          {dialogError && (
+            <p className="warning" role="alert">
+              {dialogError}
+            </p>
+          )}
+          <label>
+            Withdrawal reason
+            <textarea
+              value={reason}
+              maxLength={2000}
+              onChange={(ev) => setReason(ev.target.value)}
+            />
+          </label>
+          <button
+            onClick={() => {
+              if (reason.trim().length < 20) {
+                setDialogError(
+                  "Explain the withdrawal in at least 20 characters.",
+                );
+                return;
+              }
+              const id = withdrawal;
+              setWithdrawal(null);
+              prepare(
+                "Review withdrawal",
+                "The original record remains in history. This adds an immutable withdrawal with your reason.",
+                {
+                  ...state,
+                  withdrawals: [
+                    ...state.withdrawals,
+                    {
+                      reviewId: id,
+                      at: new Date().toISOString(),
+                      reason: reason.trim(),
+                    },
+                  ],
+                },
+              );
+            }}
+          >
+            Review withdrawal
+          </button>
+          <button onClick={() => setWithdrawal(null)}>Cancel</button>
+        </Dialog>
+      )}
+      {preview && (
+        <Dialog title={preview.title} onClose={() => setPreview(null)}>
+          <p>{preview.explanation}</p>
+          {preview.review ? (
+            <>
+              <p>
+                <strong>
+                  {preview.review.id} · {preview.review.verdict}
+                </strong>
+              </p>
+              <p>{preview.review.rationale}</p>
+              <p>References: {preview.review.refs.join(", ")}</p>
+              <EvidenceSnapshot value={preview.review.snapshot} />
+            </>
+          ) : (
+            <>
+              <p>
+                {preview.next.reviews.length} verdicts ·{" "}
+                {preview.next.rules.length} rules ·{" "}
+                {preview.next.withdrawals.length} withdrawals
+              </p>
+              <RuleSummary rule={preview.next.rules.at(-1)!} />
+            </>
+          )}
+          {preview.title === "Review reset" && (
+            <>
+              <p>
+                Saved bytes in this preview:{" "}
+                {preview.bound.raw === null
+                  ? "no saved record"
+                  : `${preview.bound.raw.length} characters`}
+                . Readable: yes.
+              </p>
+              <button
+                disabled={preview.bound.raw === null}
+                onClick={() =>
+                  exportJson(
+                    { key: KEY, raw: preview.bound.raw },
+                    "Experiment-Verdict-reset-bound-raw.json",
+                  )
+                }
+              >
+                Export preview-bound saved bytes
+              </button>
+            </>
+          )}
+          <div className="dialog-actions">
+            <button
+              className="primary"
+              onClick={
+                preview.title === "Review saved refresh"
+                  ? restoreRefresh
+                  : confirm
+              }
+            >
+              Confirm {preview.title.replace("Review ", "").toLowerCase()}
+            </button>
+            <button onClick={() => setPreview(null)}>Cancel</button>
+          </div>
+        </Dialog>
+      )}
+    </>
+  );
+  // Withdrawal selection is kept outside immutable history until its own preview is confirmed.
+  function setWithdrawal(id: string | null) {
+    setWithdrawalState(id);
+  }
 }
