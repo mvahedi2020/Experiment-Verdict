@@ -6,3 +6,8 @@ playwright-report/
 .DS_Store
 evidence/*.json
 evidence/*.txt
+
+# Local credentials must stay outside the published sample.
+.env
+.env.*
+!.env.example
