@@ -617,7 +617,7 @@ export default function App() {
             ].map((d) => (
               <a
                 key={d}
-                href={`${import.meta.env.BASE_URL}docs/product/${d}.md`}
+                href={`${import.meta.env.BASE_URL}docs/product/${d}.html`}
               >
                 {d.replaceAll("_", " ")}
               </a>

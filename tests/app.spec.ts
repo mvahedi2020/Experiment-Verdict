@@ -328,7 +328,11 @@ test("production security policy, no unexpected network, safe text and document 
   for (const link of await page.locator("footer a").all()) {
     const response = await page.request.get((await link.getAttribute("href"))!);
     expect(response.ok()).toBe(true);
-    expect((await response.text()).trim().startsWith("# ")).toBe(true);
+    expect(response.headers()["content-type"]).toContain("text/html");
+    const documentHtml = await response.text();
+    expect(documentHtml.toLowerCase().startsWith("<!doctype html>")).toBe(true);
+    expect(documentHtml).toMatch(/<title>[^<]+ · Experiment Verdict<\/title>/);
+    expect(documentHtml).toContain('class="prose"');
   }
   expect(external).toEqual([]);
   expect(errors).toEqual([]);

@@ -1,5 +1,7 @@
 # Experiment Verdict
 
+[Read the formatted product documents](https://mvahedi2020.github.io/Experiment-Verdict/docs/index.html).
+
 A fictional experiment scorecard for a product manager reviewing whether an intervention merits proceeding, iteration, or stopping. The prototype keeps original rules, data quality, guardrails, uncertainty, and a human rationale together.
 
 ## Reviewer route
