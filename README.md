@@ -4,6 +4,8 @@
 
 A fictional experiment scorecard for a product manager reviewing whether an intervention merits proceeding, iteration, or stopping. The prototype keeps original rules, data quality, guardrails, uncertainty, and a human rationale together.
 
+Product tradeoff: the original guardrail can block proceed despite a positive headline. The next investment depends on reviewers explaining validity, harm and uncertainty before considering richer analysis or automation. See the [case study](docs/product/Case_Study.md) for the proposed comparison and investment criteria.
+
 ## Reviewer route
 
 [Open the interactive demo](https://mvahedi2020.github.io/Experiment-Verdict/).
