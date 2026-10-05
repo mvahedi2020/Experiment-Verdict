@@ -425,3 +425,41 @@ test("incomplete rationale and missing references explain why review cannot be r
   );
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBeNull();
 });
+
+
+for (const input of ["fixture", "verdict", "rationale", "references"])
+  test(`changed ${input} expires a pending verdict preview`, async ({ page }) => {
+    await open(page);
+    await draft(page);
+    // Native modal blocks ordinary background clicks; force the state transition
+    // to verify the explicit input freshness contract independently of the modal.
+    if (input === "fixture")
+      await page.getByLabel("Evidence fixture").selectOption("1", { force: true });
+    else if (input === "verdict")
+      await page.getByRole("combobox", { name: "Verdict", exact: true }).selectOption("stop", { force: true });
+    else if (input === "references")
+      await page.getByLabel("Quality", { exact: true }).evaluate((node) => {
+        const checkbox = node as HTMLInputElement;
+        checkbox.click();
+      });
+    else
+      await page.getByLabel("Reviewer rationale").evaluate((node) => {
+        const textarea = node as HTMLTextAreaElement;
+        const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+        setValue.call(textarea, "Changed rationale requires a separate review of its exact contents.");
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    await page.getByRole("button", { name: "Confirm verdict", exact: true }).click();
+    await expect(page.getByRole("status")).toContainText("stale");
+    expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBeNull();
+    await page.getByRole("combobox", { name: "Verdict", exact: true }).selectOption("iterate");
+    await page.getByLabel("Reviewer rationale").fill("A fresh review preserves the revised inputs and the original gate.");
+    await page.getByLabel("Quality", { exact: true }).check();
+    await page.getByRole("button", { name: "Review verdict", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm verdict", exact: true }).click();
+    const saved = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), KEY))!);
+    expect(saved.reviews).toHaveLength(1);
+    expect(saved.reviews[0].verdict).toBe("iterate");
+    expect(saved.reviews[0].snapshot.evidence.id).toBe(input === "fixture" ? "EV-E2" : "EV-E1");
+    expect(saved.reviews[0].refs).toContain("quality");
+  });

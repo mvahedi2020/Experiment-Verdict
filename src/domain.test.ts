@@ -6,6 +6,7 @@ import {
   original,
   initial,
   createReview,
+  reviewInputKey,
   parseState,
   snapshot,
 } from "./domain";
@@ -125,5 +126,21 @@ describe("storage binding", () => {
     };
     expect(commit(read(storage), initial(), storage).kind).toBe("memory");
     expect(KEY).toBe("experiment-verdict:v1");
+  });
+});
+
+
+describe("verdict input freshness", () => {
+  it("binds evidence, rule, verdict, exact rationale and references", () => {
+    const rationale = "Original evidence supports a bounded next step.";
+    const bound = reviewInputKey(fixtures[0], original, "proceed", rationale, ["primary"]);
+    expect(reviewInputKey(structuredClone(fixtures[0]), { ...original }, "proceed", rationale, ["primary"])).toBe(bound);
+    for (const changed of [
+      reviewInputKey(fixtures[1], original, "proceed", rationale, ["primary"]),
+      reviewInputKey(fixtures[0], { ...original, id: "EV-R2", kind: "post-result" }, "proceed", rationale, ["primary"]),
+      reviewInputKey(fixtures[0], original, "iterate", rationale, ["primary"]),
+      reviewInputKey(fixtures[0], original, "proceed", rationale + " ", ["primary"]),
+      reviewInputKey(fixtures[0], original, "proceed", rationale, ["primary", "guardrail"]),
+    ]) expect(changed).not.toBe(bound);
   });
 });

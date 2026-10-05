@@ -169,6 +169,16 @@ export type State = {
 export function initial(): State {
   return { schema: 1, rules: [{ ...original }], reviews: [], withdrawals: [] };
 }
+// Bind the exact current inputs separately from immutable persisted history.
+export function reviewInputKey(
+  evidence: Evidence,
+  rule: Rule,
+  verdict: Verdict,
+  rationale: string,
+  refs: Ref[],
+) {
+  return JSON.stringify({ evidence: evidence.id, rule, verdict, rationale, refs });
+}
 export function createReview(
   s: State,
   e: Evidence,

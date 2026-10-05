@@ -10,6 +10,7 @@ import {
   original,
   initial,
   createReview,
+  reviewInputKey,
   references,
   type Ref,
   type Review,
@@ -29,6 +30,7 @@ type Preview = {
   next: State;
   bound: Reading;
   stateBytes: string;
+  inputBytes?: string;
   review?: Review;
 };
 function exportJson(value: unknown, name: string) {
@@ -94,12 +96,17 @@ export default function App() {
       next,
       bound: current,
       stateBytes: JSON.stringify(state),
+      inputBytes: review ? reviewInputKey(e, active, verdict, rationale, refs) : undefined,
       review,
     });
   }
   function confirm() {
     if (!preview) return;
-    if (preview.stateBytes !== JSON.stringify(state)) {
+    if (
+      preview.stateBytes !== JSON.stringify(state) ||
+      (preview.inputBytes !== undefined &&
+        preview.inputBytes !== reviewInputKey(e, active, verdict, rationale, refs))
+    ) {
       setPreview(null);
       setNotice("Review became stale. Start a new preview.");
       return;
