@@ -1,5 +1,9 @@
 # Case study
 
+Decide whether a sample experiment should continue, change or stop. Check complaints and evidence quality as well as the positive result, using the rules set before the test.
+
+**The product choice:** Keep the original success and harm limits in force when the headline looks attractive. [Try the sample](https://mvahedi2020.github.io/Experiment-Verdict/) · [Follow the walkthrough](Sample_Walkthrough.md).
+
 ## User and decision
 
 A product manager must explain why a headline gain is insufficient to proceed. Experiment Verdict makes the whole decision contract visible: completion, complaint guardrail, allocation and exposure quality, uncertainty, and limits. The reviewer chooses a verdict and cites specific evidence before committing an immutable snapshot.

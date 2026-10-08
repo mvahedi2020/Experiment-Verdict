@@ -2,7 +2,9 @@
 
 [Read the formatted product documents](https://mvahedi2020.github.io/Experiment-Verdict/docs/index.html).
 
-A fictional experiment scorecard for a product manager reviewing whether an intervention merits proceeding, iteration, or stopping. The prototype keeps original rules, data quality, guardrails, uncertainty, and a human rationale together.
+Decide whether a sample experiment should continue, change or stop. Check complaints and evidence quality as well as the positive result, using the rules set before the test. All records in this demo are fictional.
+
+**Try it:** Choose “Headline + harm”, compare completion with complaints, and review why proceeding remains blocked. [Open the demo](https://mvahedi2020.github.io/Experiment-Verdict/) · [Follow the walkthrough](docs/product/Sample_Walkthrough.md).
 
 Product tradeoff: the original guardrail can block proceed despite a positive headline. The next investment depends on reviewers explaining validity, harm and uncertainty before considering richer analysis or automation. See the [case study](docs/product/Case_Study.md) for the proposed comparison and investment criteria.
 
