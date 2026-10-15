@@ -4,6 +4,12 @@ Decide whether a sample experiment should continue, change or stop. Check compla
 
 **The product choice:** Keep the original success and harm limits in force when the headline looks attractive. [Try the sample](https://mvahedi2020.github.io/Experiment-Verdict/) · [Follow the walkthrough](Sample_Walkthrough.md).
 
+## Experience and decision
+
+My Oracle work included online evaluation, A/B testing and interleaving with specialist partners. This example focuses on the product decision after results arrive: whether the evidence justifies continuing. This is a separate fictional portfolio exercise; its records, rules and results do not reproduce an employer system.
+
+**Decision to challenge:** Would I still proceed if the positive headline came with more complaints? The original success and harm rules need to remain visible, and a technically valid result still needs product judgment.
+
 ## User and decision
 
 A product manager must explain why a headline gain is insufficient to proceed. Experiment Verdict makes the whole decision contract visible: completion, complaint guardrail, allocation and exposure quality, uncertainty, and limits. The reviewer chooses a verdict and cites specific evidence before committing an immutable snapshot.

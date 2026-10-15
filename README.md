@@ -6,6 +6,8 @@ Decide whether a sample experiment should continue, change or stop. Check compla
 
 **Try it:** Choose “Headline + harm”, compare completion with complaints, and review why proceeding remains blocked. [Open the demo](https://mvahedi2020.github.io/Experiment-Verdict/) · [Follow the walkthrough](docs/product/Sample_Walkthrough.md).
 
+**Experience connection:** My Oracle work included online evaluation, A/B testing and interleaving with specialist partners. This example focuses on the product decision after results arrive: whether the evidence justifies continuing. [Read the decision to challenge](docs/product/Case_Study.md#experience-and-decision).
+
 Product tradeoff: the original guardrail can block proceed despite a positive headline. The next investment depends on reviewers explaining validity, harm and uncertainty before considering richer analysis or automation. See the [case study](docs/product/Case_Study.md) for the proposed comparison and investment criteria.
 
 ## Reviewer route
