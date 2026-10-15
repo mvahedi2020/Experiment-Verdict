@@ -1,5 +1,17 @@
 # Product requirements
 
+## Product decision brief
+
+**Primary user:** A product manager deciding whether an experiment should continue, change or stop.
+
+**Problem hypothesis:** A positive headline can distract from harm, invalid evidence or rules changed after seeing results.
+
+**Scope choice:** Keep the original success and harm limits visible, then require a reasoned verdict linked to the evidence.
+
+**Evidence needed:** Judge the quality of the decision and its explanation in proposed reviewer sessions. This sample does not run experiments or demonstrate customer impact.
+
+The [case study](Case_Study.md) explains the experience connection, alternatives and cost of the choice. The requirements below describe the bounded fictional prototype.
+
 Read the original contract → choose a fictional evidence version → inspect outcome, guardrail, quality and segment limits → select proceed/iterate/stop with rationale and evidence references → review exact snapshot → commit and export.
 
 | Requirement | Acceptance |
